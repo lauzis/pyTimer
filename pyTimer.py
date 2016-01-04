@@ -18,29 +18,44 @@ class pyTimerActiveColab:
 class pyTimerDb():
     db_name = "pyTimer.dbo";
     def __init__(self):
+        if not(self.db_exists()):
+            self.setup_db()
         return None
     
-    def setup_db():
-        #create tables for the application
-        conn = sqlite3.connect(db_name)
-        
-        #creating settings table saving settings data in this table
+    def connect(self):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        return cursor
     
-    def db_exists():
+    
+    def db_exists(self):
         #TODO maybe there is better way to check if there is already settings
+        
+        cursor = self.connect()
+    
+        cursor.execute("SELECT settings FROM sqlite_master WHERE type='table' AND name='settings'");
+        print(cursor);
+        conn.close()
+        
+    def save_settings(obj_settings):
         conn = sqlite3.connect(db_name)
         cursor = conn.cursor()
-    
-        c.execute("SELECT settings FROM sqlite_master WHERE type='table' AND name='settings'");
-        conn.close()
+        return True;
+        
 
-    def db_setup():
-        #check if there is tables
-        if db_exists():
-                read_settings()
-        else:
-            setup_db()
+    def setup_db(self):
+            
         #create tables if not exist
+        #settings table
+        cursor = self.connect()
+        cursor.execute('''CREATE TABLE settings
+                            (
+                            api_key text,
+                            api_url text,
+                            api_secret text,
+                            username text,
+                            password text
+                            )''')
         return 1
     
     
@@ -57,7 +72,12 @@ class pyTimerSettings():
     
     def read_settings():
         #reading settings from table
-        return False;
+        return False
+    
+    def save(self):
+        db = pyTimerDb();
+        return db.save_settings(self);
+
 
 
 class pyTimer():
@@ -108,6 +128,14 @@ class pyTimer():
         print("saving settings");
         
         print("then closing the settings window");
+        ac_api_key=self.builder.get_object('input_settings_ac_api_key')
+        self.settings.ac_api_key=ac_api_key.get_text();
+        
+        ac_api_url=self.builder.get_object('input_settings_ac_api_url')
+        self.settings.ac_api_url = ac_api_url.get_text();
+        self.settings.save();
+        
+        
         self.ux_win_settings.hide();
         self.ux_win_main.show();
         self.ux_win_main.activate();
@@ -141,7 +169,7 @@ class pyTimer():
         ac_api_key.set_text(self.settings.ac_api_key);
         
         ac_api_url=self.builder.get_object('input_settings_ac_api_url')
-        ac_api_key.set_text(self.settings.ac_api_url);
+        ac_api_url.set_text(self.settings.ac_api_url);
         
         
         self.ux_win_main.hide();
