@@ -2,6 +2,7 @@
 import requests
 import json
 import sqlite3
+import sys
 from gi.repository import Gtk
 
 
@@ -16,16 +17,22 @@ class pyTimerActiveColab:
         print(projects)
 
 class pyTimerDb():
-    db_name = "pyTimer.dbo";
+    db_name = "pyTimer.dbo"
+    conn=""
     def __init__(self):
         if not(self.db_exists()):
             self.setup_db()
         return None
     
+    #connecting to sql lite db
     def connect(self):
-        conn = sqlite3.connect(self.db_name)
-        cursor = conn.cursor()
+        self.conn = sqlite3.connect(self.db_name)
+        cursor = self.conn.cursor()
         return cursor
+    
+    #dissconectiong from sql lite db
+    def dissconnect(self):
+        self.conn.close()
     
     
     def db_exists(self):
@@ -33,13 +40,52 @@ class pyTimerDb():
         
         cursor = self.connect()
     
-        cursor.execute("SELECT settings FROM sqlite_master WHERE type='table' AND name='settings'");
-        print(cursor);
-        conn.close()
+        #so we try to read table, if there is no table, then there will be exception
+        #
+        #if there is no error, then return true;
+        #if there was error, then we return false;
+        try:
+            cursor.execute("SELECT * FROM settings");
+            self.dissconnect()
+            return True
+        except:
+            self.dissconnect()
+            return False
+        
+        
+    
+        
+    def read_settings(self):
+        cursor = self.connect()
+        cursor.execute("SELECT * FROM settings");
+        while True:
+            row = cursor.fetchone()
+            if row == None:
+                break
+            print(row);
+        
         
     def save_settings(obj_settings):
-        conn = sqlite3.connect(db_name)
-        cursor = conn.cursor()
+        cursor =self.connect();
+        
+        sql = '''insert or replace into settings
+                (
+                    api_name text,
+                    api_key text,
+                    api_url text,
+                    api_secret text,
+                    api_username text,
+                    api_password text
+                )
+                values
+                (
+                '''+ item.api_name+''',
+                '''+ item.api_key+''',
+                '''+ item.api_url+''',
+                '''+ item.api_secret+''',
+                '''+ item.api_username+''',
+                '''+ item.api_password+'''
+                )'''
         return True;
         
 
@@ -50,39 +96,65 @@ class pyTimerDb():
         cursor = self.connect()
         cursor.execute('''CREATE TABLE settings
                             (
+                            api_name text,
                             api_key text,
                             api_url text,
                             api_secret text,
-                            username text,
-                            password text
+                            api_username text,
+                            api_password text
                             )''')
         return 1
     
     
 
 
+class apiModel():
+    api_name=""
+    api_key=""
+    api_url=""
+    api_secret=""
+    api_username=""
+    api_password=""
 
 
 class pyTimerSettings():
-    ac_api_key=""
-    ac_api_url=""
+    data = None
 
     def __init__(self):
+        self.read()
         return None
     
-    def read_settings():
+    def is_settings(self):
+        if (self.data==None or len(self.data)>0):
+            return False
+        else:
+            return True
+    
+    def read(self):
         #reading settings from table
+        db = pyTimerDb();
+        self.data=db.read_settings();
         return False
     
     def save(self):
         db = pyTimerDb();
-        return db.save_settings(self);
+        
+        if (self.data==None or len(self.data)==0):
+            print("no data so dont have to save");
+            return 1
+        else:
+            print("there is data so saving");
+            return db.save_settings(self);
 
-
+def print_v(message_to_console):
+    if (len(sys.argv)>1 and sys.argv[1]=='-v'):
+        print(message_to_console);
 
 class pyTimer():
     
     settings = pyTimerSettings()
+    
+    
     builder = Gtk.Builder()
     builder.add_from_file("pyTimer.glade")
     
@@ -92,12 +164,15 @@ class pyTimer():
     #settings window
     ux_win_settings = builder.get_object("win_settings")
     
+    
     def __init__(self):
         
         #linking main window singals/events with functions
         
+        print_v('testing verbose output')
         
-        
+        if (not(self.settings.is_settings())):
+            self.default_settings()
         self.ux_win_main_link_signals()
         
         #linkint settings window signals/events with functions
@@ -111,6 +186,20 @@ class pyTimer():
         #self.mainWindow.
             
         Gtk.main()
+        
+    def default_settings(self):
+        tmp_api = apiModel()
+        
+        #acctive colab default settings
+        tmp_api.api_name="active-colab"
+        tmp_api.api_key=""
+        tmp_api.api_url=""
+        tmp_api.api_secret=""
+        tmp_api.api_username=""
+        tmp_api.api_password=""
+        self.settings.data={tmp_api.api_name:tmp_api}
+        
+        
         
     def ux_win_settings_link_signals(self):
         ux_win_settings = self.ux_win_settings
@@ -129,10 +218,10 @@ class pyTimer():
         
         print("then closing the settings window");
         ac_api_key=self.builder.get_object('input_settings_ac_api_key')
-        self.settings.ac_api_key=ac_api_key.get_text();
+        self.settings.data['active-colab'].ac_api_key=ac_api_key.get_text();
         
         ac_api_url=self.builder.get_object('input_settings_ac_api_url')
-        self.settings.ac_api_url = ac_api_url.get_text();
+        self.settings.data['active-colab'].ac_api_url = ac_api_url.get_text();
         self.settings.save();
         
         
@@ -166,10 +255,10 @@ class pyTimer():
     def ux_show_settings(self,widget,*args):
         print("show settings");
         ac_api_key=self.builder.get_object('input_settings_ac_api_key')
-        ac_api_key.set_text(self.settings.ac_api_key);
+        ac_api_key.set_text(self.settings.data['active-colab'].ac_api_key);
         
         ac_api_url=self.builder.get_object('input_settings_ac_api_url')
-        ac_api_url.set_text(self.settings.ac_api_url);
+        ac_api_url.set_text(self.settings.data['active-colab'].ac_api_url);
         
         
         self.ux_win_main.hide();
@@ -186,6 +275,7 @@ class pyTimer():
         self.exit();
 
 if __name__ == "__main__":
+    
     app = pyTimer()
 
     
