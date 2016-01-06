@@ -5,6 +5,10 @@ import sqlite3
 import sys
 from gi.repository import Gtk
 
+def print_v(message_to_console):
+    if (len(sys.argv)>1 and sys.argv[1]=='-v'):
+        print(message_to_console);
+
 
 class pyTimerActiveColab:
     def __init__(self):
@@ -65,10 +69,14 @@ class pyTimerDb():
             print(row);
         
         
-    def save_settings(obj_settings):
+    def save_settings(self,settings):
         cursor =self.connect();
         
-        sql = '''insert or replace into settings
+        # with keys
+        print(settings['active-colab'].api_key)
+        for (api_name, api_obj) in settings:
+            print api_name
+            sql = '''insert or replace into settings
                 (
                     api_name text,
                     api_key text,
@@ -79,13 +87,14 @@ class pyTimerDb():
                 )
                 values
                 (
-                '''+ item.api_name+''',
-                '''+ item.api_key+''',
-                '''+ item.api_url+''',
-                '''+ item.api_secret+''',
-                '''+ item.api_username+''',
-                '''+ item.api_password+'''
+                '''+ api_obj.api_name+''',
+                '''+ api_obj.api_key+''',
+                '''+ api_obj.api_url+''',
+                '''+ api_obj.api_secret+''',
+                '''+ api_obj.api_username+''',
+                '''+ api_obj.api_password+'''
                 )'''
+            print(sql)
         return True;
         
 
@@ -139,16 +148,15 @@ class pyTimerSettings():
     def save(self):
         db = pyTimerDb();
         
+        print(self.data['active-colab'].api_name);
         if (self.data==None or len(self.data)==0):
             print("no data so dont have to save");
             return 1
         else:
-            print("there is data so saving");
-            return db.save_settings(self);
+            print_v("Saving data to the DB");
+            return db.save_settings(self.data);
 
-def print_v(message_to_console):
-    if (len(sys.argv)>1 and sys.argv[1]=='-v'):
-        print(message_to_console);
+
 
 class pyTimer():
     
@@ -166,16 +174,16 @@ class pyTimer():
     
     
     def __init__(self):
-        
         #linking main window singals/events with functions
         
-        print_v('testing verbose output')
         
+        print_v('Check if there is settings');
         if (not(self.settings.is_settings())):
             self.default_settings()
         self.ux_win_main_link_signals()
         
         #linkint settings window signals/events with functions
+        print_v('Linking signals');
         self.ux_win_settings_link_signals()
         
         self.ux_win_main.show_all()
@@ -218,10 +226,10 @@ class pyTimer():
         
         print("then closing the settings window");
         ac_api_key=self.builder.get_object('input_settings_ac_api_key')
-        self.settings.data['active-colab'].ac_api_key=ac_api_key.get_text();
+        self.settings.data['active-colab'].api_key=ac_api_key.get_text();
         
         ac_api_url=self.builder.get_object('input_settings_ac_api_url')
-        self.settings.data['active-colab'].ac_api_url = ac_api_url.get_text();
+        self.settings.data['active-colab'].api_url = ac_api_url.get_text();
         self.settings.save();
         
         
@@ -255,10 +263,10 @@ class pyTimer():
     def ux_show_settings(self,widget,*args):
         print("show settings");
         ac_api_key=self.builder.get_object('input_settings_ac_api_key')
-        ac_api_key.set_text(self.settings.data['active-colab'].ac_api_key);
+        ac_api_key.set_text(self.settings.data['active-colab'].api_key);
         
         ac_api_url=self.builder.get_object('input_settings_ac_api_url')
-        ac_api_url.set_text(self.settings.data['active-colab'].ac_api_url);
+        ac_api_url.set_text(self.settings.data['active-colab'].api_url);
         
         
         self.ux_win_main.hide();
@@ -275,7 +283,7 @@ class pyTimer():
         self.exit();
 
 if __name__ == "__main__":
-    
+    print_v("Init");
     app = pyTimer()
 
     
