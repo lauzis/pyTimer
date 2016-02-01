@@ -1,86 +1,65 @@
 #!/usr/bin/python
 import requests
 import json
-import sqlite3
+import sched
+import time
 from gi.repository import Gtk
 
 
-class pyTimerActiveColab:
-    def __init__(self):
-        return None
-    
-    def ac_api_get_projects():
-        project_list_url= self.time_api_url + "?path_info=projects&format=json&auth_api_token="+self.settings.api_key;
-        request = requests.get(project_list_url)
-        projects = json.loads(request.content)
-        print(projects)
 
-class pyTimerDb():
-    db_name = "pyTimer.dbo";
-    def __init__(self):
-        return None
-    
-    def setup_db():
-        #create tables for the application
-        conn = sqlite3.connect(db_name)
-        
-        #creating settings table saving settings data in this table
-    
-    def db_exists():
-        #TODO maybe there is better way to check if there is already settings
-        conn = sqlite3.connect(db_name)
-        cursor = conn.cursor()
-    
-        c.execute("SELECT settings FROM sqlite_master WHERE type='table' AND name='settings'");
-        conn.close()
-
-    def db_setup():
-        #check if there is tables
-        if db_exists():
-                read_settings()
-        else:
-            setup_db()
-        #create tables if not exist
-        return 1
-    
-    
+#including local classes
+from classes.activeColab import activeColab
+from classes.apiModel import apiModel
+from classes.pyTimerSettings import pyTimerSettings
+from classes.commonFunctions import cf
 
 
 
 
-class pyTimerSettings():
-    ac_api_key=""
-    ac_api_url=""
 
-    def __init__(self):
-        return None
-    
-    def read_settings():
-        #reading settings from table
-        return False;
+
 
 
 class pyTimer():
     
-    settings = pyTimerSettings()
-    builder = Gtk.Builder()
-    builder.add_from_file("pyTimer.glade")
+    settings=None
+    builder=None
     
     #main window
-    ux_win_main = builder.get_object("win_main")
+    ux_win_main = None
     
     #settings window
-    ux_win_settings = builder.get_object("win_settings")
+    ux_win_settings=None;
+    
+    scheduler = sched.scheduler(time.time, time.sleep)
     
     def __init__(self):
+        
+        #init
+        self.settings= pyTimerSettings()
+        
+        self.builder= Gtk.Builder()
+        self.builder.add_from_file("pyTimer.glade")
+        
+        
+        #main window
+        self.ux_win_main = self.builder.get_object("win_main")
+        
+        #settings window
+        self.ux_win_settings = self.builder.get_object("win_settings")
+        
+        #loading settings
+        cf.print_v('Check if there is settings');
+        if (not(self.settings.is_settings())):
+            self.default_settings()
+        self.ux_win_main_link_signals()
         
         #linking main window singals/events with functions
         
         
         
-        self.ux_win_main_link_signals()
-        
         #linkint settings window signals/events with functions
+        cf.print_v('Linking signals');
         self.ux_win_settings_link_signals()
         
         self.ux_win_main.show_all()
@@ -91,6 +70,26 @@ class pyTimer():
         #self.mainWindow.
             
         Gtk.main()
+        
+    def scheduled_task(sc): 
+        print "Doing stuff..."
+        # do your stuff
+        cf.sendmessage("Working?","There is no active task, maybe you forgot to set tast?")
+        sc.enter(60, 1, scheduled_task, (sc,))
+        
+    def default_settings(self):
+        tmp_api = apiModel()
+        
+        #acctive colab default settings
+        tmp_api.api_name="active-colab"
+        tmp_api.api_key=""
+        tmp_api.api_url=""
+        tmp_api.api_secret=""
+        tmp_api.api_username=""
+        tmp_api.api_password=""
+        self.settings.data={tmp_api.api_name:tmp_api}
+        
+        
         
     def ux_win_settings_link_signals(self):
         ux_win_settings = self.ux_win_settings
@@ -108,6 +107,14 @@ class pyTimer():
         print("saving settings");
         
         print("then closing the settings window");
+        ac_api_key=self.builder.get_object('input_settings_ac_api_key')
+        self.settings.data['active-colab'].api_key=ac_api_key.get_text();
+        
+        ac_api_url=self.builder.get_object('input_settings_ac_api_url')
+        self.settings.data['active-colab'].api_url = ac_api_url.get_text();
+        self.settings.save();
+        
+        
         self.ux_win_settings.hide();
         self.ux_win_main.show();
         self.ux_win_main.activate();
@@ -138,10 +145,10 @@ class pyTimer():
     def ux_show_settings(self,widget,*args):
         print("show settings");
         ac_api_key=self.builder.get_object('input_settings_ac_api_key')
-        ac_api_key.set_text(self.settings.ac_api_key);
+        ac_api_key.set_text(self.settings.data['active-colab'].api_key);
         
         ac_api_url=self.builder.get_object('input_settings_ac_api_url')
-        ac_api_key.set_text(self.settings.ac_api_url);
+        ac_api_url.set_text(self.settings.data['active-colab'].api_url);
         
         
         self.ux_win_main.hide();
@@ -158,6 +165,10 @@ class pyTimer():
         self.exit();
 
 if __name__ == "__main__":
+    cf.print_v("Init");
+    cf.sendmessage("pyTimer","Timer started!","");
     app = pyTimer()
+    
+    
 
     
