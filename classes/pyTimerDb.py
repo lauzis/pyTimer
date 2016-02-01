@@ -10,9 +10,7 @@ class pyTimerDb():
             self.setup_db()
         return None
     
-    def disconnect(self):
-        self.conn.commit();
-        self.conn.close();
+    
     
     
     #connecting to sql lite db
@@ -23,8 +21,9 @@ class pyTimerDb():
         return cursor
     
     #dissconectiong from sql lite db
-    def dissconnect(self):
-        self.conn.close()
+    def disconnect(self):
+        self.conn.commit();
+        self.conn.close();
     
     
     def db_exists(self):
@@ -38,10 +37,10 @@ class pyTimerDb():
         #if there was error, then we return false;
         try:
             cursor.execute("SELECT * FROM settings");
-            self.dissconnect()
+            self.disconnect()
             return True
         except:
-            self.dissconnect()
+            self.disconnect()
             return False
         
         
@@ -95,7 +94,9 @@ class pyTimerDb():
                     where api_name=\''''+api_name+'''\'
                     '''
                 cursor.execute(sql);
+                self.disconnect();
                 cf.print_v("updated settings value");
+                
                 return 2;
             else:
                 #insert
@@ -120,7 +121,7 @@ class pyTimerDb():
                     '''
                     
                 cursor.execute(sql);
-                
+                self.disconnect();
                 cf.print_v("insering new data");
                 cf.print_v(sql);
                 return 1
