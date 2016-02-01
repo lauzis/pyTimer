@@ -1,189 +1,65 @@
 #!/usr/bin/python
 import requests
 import json
-import sqlite3
-import sys
+import sched
+import time
 from gi.repository import Gtk
 
-def print_v(message_to_console):
-    if (len(sys.argv)>1 and sys.argv[1]=='-v'):
-        print(message_to_console);
 
 
-class pyTimerActiveColab:
-    def __init__(self):
-        return None
-    
-    def ac_api_get_projects():
-        project_list_url= self.time_api_url + "?path_info=projects&format=json&auth_api_token="+self.settings.api_key;
-        request = requests.get(project_list_url)
-        projects = json.loads(request.content)
-        print(projects)
-
-class pyTimerDb():
-    db_name = "pyTimer.dbo"
-    conn=""
-    def __init__(self):
-        if not(self.db_exists()):
-            self.setup_db()
-        return None
-    
-    #connecting to sql lite db
-    def connect(self):
-        self.conn = sqlite3.connect(self.db_name)
-        cursor = self.conn.cursor()
-        return cursor
-    
-    #dissconectiong from sql lite db
-    def dissconnect(self):
-        self.conn.close()
-    
-    
-    def db_exists(self):
-        #TODO maybe there is better way to check if there is already settings
-        
-        cursor = self.connect()
-    
-        #so we try to read table, if there is no table, then there will be exception
-        #
-        #if there is no error, then return true;
-        #if there was error, then we return false;
-        try:
-            cursor.execute("SELECT * FROM settings");
-            self.dissconnect()
-            return True
-        except:
-            self.dissconnect()
-            return False
-        
-        
-    
-        
-    def read_settings(self):
-        cursor = self.connect()
-        cursor.execute("SELECT * FROM settings");
-        while True:
-            row = cursor.fetchone()
-            if row == None:
-                break
-            print(row);
-        
-        
-    def save_settings(self,settings):
-        cursor =self.connect();
-        
-        # with keys
-        print(settings['active-colab'].api_key)
-        for (api_name, api_obj) in settings:
-            print api_name
-            sql = '''insert or replace into settings
-                (
-                    api_name text,
-                    api_key text,
-                    api_url text,
-                    api_secret text,
-                    api_username text,
-                    api_password text
-                )
-                values
-                (
-                '''+ api_obj.api_name+''',
-                '''+ api_obj.api_key+''',
-                '''+ api_obj.api_url+''',
-                '''+ api_obj.api_secret+''',
-                '''+ api_obj.api_username+''',
-                '''+ api_obj.api_password+'''
-                )'''
-            print(sql)
-        return True;
-        
-
-    def setup_db(self):
-            
-        #create tables if not exist
-        #settings table
-        cursor = self.connect()
-        cursor.execute('''CREATE TABLE settings
-                            (
-                            api_name text,
-                            api_key text,
-                            api_url text,
-                            api_secret text,
-                            api_username text,
-                            api_password text
-                            )''')
-        return 1
-    
-    
+#including local classes
+from classes.activeColab import activeColab
+from classes.apiModel import apiModel
+from classes.pyTimerSettings import pyTimerSettings
+from classes.commonFunctions import cf
 
 
-class apiModel():
-    api_name=""
-    api_key=""
-    api_url=""
-    api_secret=""
-    api_username=""
-    api_password=""
 
 
-class pyTimerSettings():
-    data = None
 
-    def __init__(self):
-        self.read()
-        return None
-    
-    def is_settings(self):
-        if (self.data==None or len(self.data)>0):
-            return False
-        else:
-            return True
-    
-    def read(self):
-        #reading settings from table
-        db = pyTimerDb();
-        self.data=db.read_settings();
-        return False
-    
-    def save(self):
-        db = pyTimerDb();
-        
-        print(self.data['active-colab'].api_name);
-        if (self.data==None or len(self.data)==0):
-            print("no data so dont have to save");
-            return 1
-        else:
-            print_v("Saving data to the DB");
-            return db.save_settings(self.data);
 
 
 
 class pyTimer():
     
-    settings = pyTimerSettings()
-    
-    
-    builder = Gtk.Builder()
-    builder.add_from_file("pyTimer.glade")
+    settings=None
+    builder=None
     
     #main window
-    ux_win_main = builder.get_object("win_main")
+    ux_win_main = None
     
     #settings window
-    ux_win_settings = builder.get_object("win_settings")
+    ux_win_settings=None;
     
+    scheduler = sched.scheduler(time.time, time.sleep)
     
     def __init__(self):
-        #linking main window singals/events with functions
+        
+        #init
+        self.settings= pyTimerSettings()
+        
+        self.builder= Gtk.Builder()
+        self.builder.add_from_file("pyTimer.glade")
         
         
-        print_v('Check if there is settings');
+        #main window
+        self.ux_win_main = self.builder.get_object("win_main")
+        
+        #settings window
+        self.ux_win_settings = self.builder.get_object("win_settings")
+        
+        #loading settings
+        cf.print_v('Check if there is settings');
         if (not(self.settings.is_settings())):
             self.default_settings()
         self.ux_win_main_link_signals()
         
+        #linking main window singals/events with functions
+        
+        
+        
         #linkint settings window signals/events with functions
-        print_v('Linking signals');
+        cf.print_v('Linking signals');
         self.ux_win_settings_link_signals()
         
         self.ux_win_main.show_all()
@@ -194,6 +70,12 @@ class pyTimer():
         #self.mainWindow.
             
         Gtk.main()
+        
+    def scheduled_task(sc): 
+        print "Doing stuff..."
+        # do your stuff
+        cf.sendmessage("Working?","There is no active task, maybe you forgot to set tast?")
+        sc.enter(60, 1, scheduled_task, (sc,))
         
     def default_settings(self):
         tmp_api = apiModel()
@@ -283,7 +165,10 @@ class pyTimer():
         self.exit();
 
 if __name__ == "__main__":
-    print_v("Init");
+    cf.print_v("Init");
+    cf.sendmessage("pyTimer","Timer started!","");
     app = pyTimer()
+    
+    
 
     
