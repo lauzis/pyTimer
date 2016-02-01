@@ -101,6 +101,9 @@ class pyTimer():
         ux_btn_settings_save = self.builder.get_object("btn_settings_save")
         ux_btn_settings_save.connect("clicked",self.ux_settings_save)
         
+        #window exist / linking to send it back to the main window
+        ux_win_settings.connect("delete-event", self.ux_show_main)
+        
         
     def ux_settings_save(self,widget,*args):
         #TODO
